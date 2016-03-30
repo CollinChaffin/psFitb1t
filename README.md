@@ -37,21 +37,25 @@ You must perform the following to set up your own custom Fitbit developer "App" 
 
 ··2. Fill in the information as shown below.  You may choose any name or description but the remainder of the information should match the values shown here:
 
-![Fitbit API screen 2](/images/psfitb1t2.png?raw=true "Fitbit API screen 2")
+![Fitbit API screen 2](/images/psfitb1t2.png?raw=true "Fitbit DEV website prerequisite application setup")
 
-··3. Install psFitb1t module and upon opening `Windows Powershell` and executing your first query with `Get-HRdata -QueryDate "2016-01-01"` you will be presented with the following screen.  You must provide your Fitbit account from dev.fitbit.com as this is the actual Fitbit dev site validating your credentials to then provide an access token:
+··3. Install psFitb1t module and upon opening `Windows Powershell` and executing your first query with `Get-HRdata -QueryDate "2016-01-01"` you will be presented with the following screen.  You must provide your Fitbit "ClientID" from dev.fitbit.com as this is the actual Fitbit dev site validating your credentials to then provide an access token:
 
-![Fitbit API screen 3](/images/psfitb1t3.png?raw=true "Fitbit API screen 3")
+![Fitbit API screen 3](/images/psfitb1t3.png?raw=true "Fitbit ClientID wizard")
 
 ··4. Upon successful Fitbit authentication and token receipt, since this is your first run you will now need to provide (and store) your personal Fitbit ClientID and API secret needed for subsequent data queries.  This token will be stored in the registry and will be used for 30 days from the time it was generated on this first run. Upon expiration, the prior step will automatically be triggered to once again authenticate to the Fitbit developer site and re-store another 30 day token:
 
-![psFitb1t setup screen 1](/images/psfitb1t4.png?raw=true "psFitb1t setup screen 1")
+![psFitb1t setup screen 1](/images/psfitb1t4.png?raw=true "Fitbit DEV website portal login screen")
+
+··4b. *NOTE* Upon successful Fitbit authentication, You must click the "Authorize" button as shown below.  Also note, however, that the "Warning" in this screenshot should NOT be on your screen assuming you set up all the redirect URLs in your application as updated here with HTTPS. This is an old screenshot with the redirectURL of HTTP.  Because nothing ever really returns to an actual application and only the token retrieval is important, either way this warning was erroneous and could be safely ignored.
+
+![psFitb1t setup screen 1](/images/psfitb1t4b.png?raw=true "Fitbit token auth screen")
 
 **Note: If you wish you may manually trigger the token (and storage) process.  Look at the `Set-FitbitOAuthTokens` function I provide.  Passing a -force will wipe the stored registry values and re-validate and can either be run in cmdline mode, or the full Windows GUI forms wizard which is the default option.
 
 ![Set-FitbitOAuthTokens execution](/images/psfitb1t5.png?raw=true "Set-FitbitOAuthTokens execution")
 
-**Note2: The 4 values are stored at `HKEY_CURRENT_USER\Software\psFitb1t`
+**Note2: The ClientID from your Fitbit API app, and the other required values are stored at `HKEY_CURRENT_USER\Software\psFitb1t`
 
 ··5. In the psFitb1t module directory (default `C:\Users\<username>\Documents\WindowsPowershell\Modules\psFitb1t`) you should have 2 data files for the above query date - the CSV and the XLSX Excel spreadsheet/chart.
 
@@ -85,7 +89,19 @@ Store your Fitbit API information by executing:
 Examples:
 ---------
 
-`C:\> Get-HRData -QueryDate "2016-01-01"`
+:new: __*New in v1.0.0.2__:  You can now retrieve an entire month of reports!  
+
+###Monthly retrieval:
+
+`C:\> Get-HRmonth -QueryMonth "2016-01"`
+
+This function will automatically check the module/save directory for any existing Excel reports already retrieved and to avoid retrieving will automatically skip existing reports.  It also computes the real calendar days for the month requested.
+
+Please read on below for details of what is generated per individual daily data retrieval.
+  
+###Daily retrieval:
+
+`C:\> Get-HRdata -QueryDate "2016-01-01"`
 
 Each run can query one 24 hour period for intra-day heartrate data (down to possible 1 second readings).  A successful run for a given 24 hour period with psFitb1t's Get-HRdata command results in the following 2 daily files being created in the module folder:
 
@@ -98,8 +114,6 @@ And Second, psFitb1t does the very heavy lifting of taking that data, importing 
 **Note:  90% of the command execution time is actually Excel simply charting the thousands of data points for your daily graph - since it is Excel charting, there is no way to further optimize the charting method used.
 
 ![Get-HRdata Execution XLSX spreadsheet and chart](/images/psfitb1t7.png?raw=true "Get-HRdata Execution XLSX spreadsheet and chart")
-
-
 
 
 Module specific notes:
@@ -130,9 +144,16 @@ Module specific notes:
     -   03/04/2016 08:10:32 :: \[INFO\] :: FINISH - Sending HTTP POST via REST to Fitbit
 
     -   03/04/2016 08:10:32 :: \[INFO\] :: FINISH - Get-HRdata function execution
+  
 
+Changelog:
+-------------
 
-	
+-   v 1.0.0.1	:	03-13-2016	:	Initial release
+-   v 1.0.0.2	:	03-30-2016	:	Added Get-HRmonth function
+
+*NOTE: changed redirect URL to HTTPS so Fitbit auth screen no longer gives false red warning that anything is "insecure"	
+
 	
 Dependencies:
 -------------
@@ -146,7 +167,7 @@ TODO:
 -------------
   1.  Provide a full Windows GUI for all execution
 
-  2.  Provide looping capability in both console and GUI to retrieve multiple days (this can be easily accomplished now using this module in a loop but will automate it within the module in future)
+  2.  Provide looping capability in ~~both console~~ and GUI to retrieve multiple days (this can be easily accomplished now using this module in a loop but will automate it within the module in future)
 
   3.  Add other Fitbit data visualizations
 

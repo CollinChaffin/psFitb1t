@@ -8,6 +8,7 @@
 # Changelog:
 #
 #	v 1.0.0.1	:	03-13-2016	:	Initial release
+#	v 1.0.0.2	:	03-30-2016	:	Added Get-HRmonth function
 #
 # Notes:
 #
@@ -59,7 +60,7 @@
 ModuleToProcess = 'psFitb1t.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.0.1'
+ModuleVersion = '1.0.0.2'
 
 # ID used to uniquely identify this module
 GUID = 'a6026be8-8b9f-452c-8b41-114ea9c9b372'
@@ -71,7 +72,7 @@ Author = 'Collin Chaffin'
 CompanyName = ''
 
 # Copyright statement for this module
-Copyright = '(c) 2014. All rights reserved.'
+Copyright = '(c) 2016. All rights reserved.'
 
 # Description of the functionality provided by this module
 Description = 'psFitb1t Windows Powershell Module - Provides Heartrate data via OAuth-based access to Fitbit API'

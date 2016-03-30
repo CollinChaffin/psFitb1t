@@ -8,6 +8,7 @@
 # Changelog:
 #
 #	v 1.0.0.1	:	03-13-2016	:	Initial release
+#	v 1.0.0.2	:	03-30-2016	:	Added Get-HRmonth function
 #
 # Notes:
 #
@@ -68,7 +69,7 @@ $Script:psFitb1tScope = "activity%20heartrate%20location%20nutrition%20profile%2
 $Script:psFitb1tTokenAge = "2592000"
 
 #You should only have to change this redirect URL if you did not follow the directions and set it to this predetermined value:
-$Script:psFitb1tRedirectURL = "http://localhost/psfitb1t"
+$Script:psFitb1tRedirectURL = "https://localhost/psfitb1t"
 $Script:psFitb1tHRQueryDate = ""
 $Script:psFitb1tTokenReturnedAge = ""
 $Script:psFitb1tAuthCode = ""
@@ -233,8 +234,9 @@ function Get-FitbitOAuthToken
 		{
 			(Write-Status -Message "START  - Building OAuth signature" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
 			
-			# step 1: make a GET request for authorization code (will need to log in Google account if not already logged in)
+			# Make GET request to have user authorize and parse for token returned - run with -VERBOSE switch to view the string actually being sent!
 			$Script:psFitb1tAuthorizeUrl = "https://www.fitbit.com/oauth2/authorize?response_type=token&client_id=$psFitb1tClientID&redirect_uri=$psFitb1tRedirectURL&scope=$psFitb1tScope&expires_in=$psFitb1tTokenAge"
+			Write-Verbose "Sending $($psFitb1tAuthorizeUrl)"
 			
 			Add-Type -AssemblyName System.Windows.Forms
 			$form = New-Object -TypeName System.Windows.Forms.Form -Property @{ Width = 440; Height = 640 }
@@ -674,6 +676,90 @@ function Get-HRdata
 		#write last query date to registry
 		New-ItemProperty HKCU:\Software\psFitb1t -name "psFitb1tHRQueryDate" -value "$Script:psFitb1tHRQueryDate" -Force | out-null		
 		(Write-Status -Message "FINISH - Get-HRdata function execution" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+	}
+}
+
+
+function Get-HRmonth
+{
+<#
+	.SYNOPSIS
+		Get entire month of heartrate reports via psFitb1t's Get-HRdata
+	
+	.DESCRIPTION
+		Determines how many possible days in the requested month and calls psFitb1t's Get-HRdata to retrieve the daily reports.  It first verifies if 
+		you have already retrieved any reports for days in the queried month and if so, only processes missing days.
+		
+		Returns bool for overall success or failure.
+	
+	.PARAMETER QueryMonth
+		A description of the QueryMonth parameter.
+	
+	.EXAMPLE
+				PS C:\> Get-HRmonth -QueryMonth '2016-01'
+				This queries all days for January, 2016 that do not already have reports on disk
+	
+	.NOTES
+		Requires the primary Get-HRdata retrieval function.
+#>	
+	[CmdletBinding()]
+	[OutputType([bool])]
+	param
+	(
+		[Parameter(Mandatory = $true)]
+		[System.String]
+		$QueryMonth = "2016-01" #This will accept mult formats such as "01/2016","2016-01"
+	)
+	BEGIN
+	{
+		(Write-Status -Message "START  - Get-HRmonth function execution" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+		
+		Import-Module -Name psFitb1t -ea 'Stop' | Out-Null
+		$nbrDaysInMonth = [DateTime]::DaysInMonth($([DateTime](Get-Date($QueryMonth))).Year, $([Datetime](Get-Date($QueryMonth))).Month)
+		$daysToProcess = 0
+		$cntProc = 0
+	}
+	PROCESS
+	{
+		try
+		{
+			(Write-Status -Message "START  - Requesting monthly HR data from Fitbit" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+			
+			#Get total real days to process = days in month minus any existing days already processed
+			for ($i = 1; $i -le $nbrDaysInMonth; $i++)
+			{
+				$day = ("{0:D2}" -f $i)
+				if (!(Test-Path -Path "$((Get-Module psFitb1t).ModuleBase)\FitbitHR_$(([Datetime](Get-Date($QueryMonth))).ToString('yyyy'))-$(([Datetime](Get-Date($QueryMonth))).ToString('MM'))-$($day).xlsx"))
+				{
+					$daysToProcess++
+				}
+			}
+			
+			(Write-Status -Message "START  - Requesting $($daysToProcess) days of HR data from Fitbit" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+			#Process the missing days and provide accurate progress counter based on number computed above
+			for ($i = 1; $i -le $nbrDaysInMonth; $i++)
+			{
+				$day = ("{0:D2}" -f $i)
+				if (!(Test-Path -Path "$((Get-Module psFitb1t).ModuleBase)\FitbitHR_$(([Datetime](Get-Date($QueryMonth))).ToString('yyyy'))-$(([Datetime](Get-Date($QueryMonth))).ToString('MM'))-$($day).xlsx"))
+				{
+					$cntProc++
+					Write-Verbose "$((Get-Module psFitb1t).ModuleBase)\FitbitHR_$(([Datetime](Get-Date($QueryMonth))).ToString('yyyy'))-$(([Datetime](Get-Date($QueryMonth))).ToString('MM'))-$($day).xlsx missing!"
+					Write-Verbose "Running: Get-HRData -QueryDate ""$($([Datetime](Get-Date($QueryMonth))).ToString('yyyy'))-$($([Datetime](Get-Date($QueryMonth))).ToString('MM'))-$($day)"" `n"
+					Write-Progress -Activity "Retrieving heartrate data for $($([Datetime](Get-Date($QueryMonth))).Year)-$($([Datetime](Get-Date($QueryMonth))).Month)-$($day)" -PercentComplete (($cntProc / $daysToProcess) * 100)
+					(Write-Status -Message "START  - Requesting HR data for $($([Datetime](Get-Date($QueryMonth))).Year)-$($([Datetime](Get-Date($QueryMonth))).Month)-$($day) from Fitbit" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+					Get-HRData -QueryDate "$($([Datetime](Get-Date($QueryMonth))).Year)-$($([Datetime](Get-Date($QueryMonth))).Month)-$($day)"					
+				}
+			}
+			(Write-Status -Message "FINISH  - Requesting monthly HR data from Fitbit" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+		}
+		catch
+		{
+			Throw $("ERROR OCCURRED RETRIEVING MONTHLY HR DATA " + $_.Exception.Message)
+		}
+	}
+	END
+	{
+		(Write-Status -Message "FINISH  - Get-HRmonth function execution" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
 	}
 }
 
@@ -1456,5 +1542,6 @@ function Call-psFitb1t-API_psf
 #endregion
 
 Export-ModuleMember Get-HRdata
+Export-ModuleMember Get-HRmonth
 Export-ModuleMember Set-FitbitOAuthTokens
 	
