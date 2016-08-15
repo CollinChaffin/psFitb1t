@@ -679,6 +679,96 @@ function Get-HRdata
 	}
 }
 
+function Get-HRRest
+{
+	<#
+	.SYNOPSIS
+		Get's your resting heart rate
+	
+	.DESCRIPTION
+		Author:  		Bert Jansen
+		Description:	Sends a request for 24hrs of HR data using OAuth and REST and outputs the lowest heart rate
+	
+	.PARAMETER QueryDate
+		The single 24hr Date to retrieve HR data (*FITBIT LIMITATION*) per query
+	
+	.EXAMPLE
+		Get-HRRest -QueryDate "2016-03-13"			
+	#>
+	[CmdletBinding()]
+	param (
+		[Parameter(Mandatory = $false)]
+		[ValidateLength(1, 140)]
+		[String]$QueryDate = $(Get-Date ([System.DateTime]::Now) -Format "yyyy-MM-dd")
+	)
+	BEGIN
+	{
+		(Write-Status -Message "START  - Get-HRdata function execution" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+	}
+	PROCESS
+	{
+		try
+		{
+			if (!$(Test-Date -inputDate $QueryDate))
+			{
+				[String]$QueryDate = $(Get-Date ([System.DateTime]::Now) -Format "yyyy-MM-dd")
+			}
+			else
+			{
+				[String]$QueryDate = $(Get-Date $QueryDate -Format "yyyy-MM-dd")
+			}
+			
+			$Script:psFitb1tHRQueryDate = $QueryDate
+			
+			# Call our main connect routine to setup the oAuth
+			$psFitb1tAuthCode = Connect-OAuthFitbit
+			
+			(Write-Status -Message "START  - Sending HTTP POST via REST to Fitbit" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+			
+			$Script:psFitb1tGetHRurl = "https://api.fitbit.com/1/user/-/activities/heart/date/$($psFitb1tHRQueryDate)/1d/1sec/time/00:00/23:59.json"
+			
+			Write-Verbose "Sending to URL $($psFitb1tGetHRurl)"
+			Write-Verbose "This request:  Headers=$psFitb1tAuthCode"
+			
+			# Call the REST API to handle the final OAUTH POST
+			$retData = Invoke-RestMethod -Method Get -Uri $psFitb1tGetHRurl -Headers @{ 'Authorization' = "Bearer " + $psFitb1tAuthCode } -ContentType "application/x-www-form-urlencoded"
+			
+			#Write the output
+			$output = @()
+			$output = New-Object -TypeName PSObject			
+			
+			#Assign the dataset to custom obj
+			$output = $retData.'activities-heart-intraday'.dataset
+			
+            $lowest = 999;
+
+            foreach($hr in $output)
+            {
+                if ($hr.value -lt $lowest)
+                {
+                    $lowest = $hr.value;
+                }
+            }
+
+            (Write-Status -Message "YOUR REST HEARTRATE AT $QueryDate WAS: $lowest" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+			
+			
+			(Write-Status -Message "FINISH - Sending HTTP POST via REST to Fitbit" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+		}
+		catch
+		{
+			Throw $("ERROR OCCURRED RETRIEVING HR DATA " + $_.Exception.Message)
+		}
+	}
+	END
+	{
+		#write last query date to registry
+		New-ItemProperty HKCU:\Software\psFitb1t -name "psFitb1tHRQueryDate" -value "$Script:psFitb1tHRQueryDate" -Force | out-null		
+		(Write-Status -Message "FINISH - Get-HRdata function execution" -Status "INFO" -Debugging:$psFitb1tDebugging -Logging:$psFitb1tLogging -Logpath $psFitb1tLogPath)
+	}
+}
+
+
 
 function Get-HRmonth
 {
@@ -1543,5 +1633,6 @@ function Call-psFitb1t-API_psf
 
 Export-ModuleMember Get-HRdata
 Export-ModuleMember Get-HRmonth
+Export-ModuleMember Get-HRRest
 Export-ModuleMember Set-FitbitOAuthTokens
 	

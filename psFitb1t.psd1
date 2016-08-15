@@ -60,7 +60,7 @@
 ModuleToProcess = 'psFitb1t.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.0.2'
+ModuleVersion = '1.0.0.3'
 
 # ID used to uniquely identify this module
 GUID = 'a6026be8-8b9f-452c-8b41-114ea9c9b372'
@@ -136,7 +136,6 @@ FileList = @()
 
 # Private data to pass to the module specified in ModuleToProcess
 PrivateData = ''
-
 }
 
 
