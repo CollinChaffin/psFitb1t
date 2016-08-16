@@ -9,6 +9,7 @@
 #
 #	v 1.0.0.1	:	03-13-2016	:	Initial release
 #	v 1.0.0.2	:	03-30-2016	:	Added Get-HRmonth function
+#   v 1.0.0.3   :   08-16-2016  :   Added Get-HRMin, Get-HRMax, Get-HRAVg cmdlets
 #
 # Notes:
 #
